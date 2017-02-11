@@ -34,25 +34,53 @@ import edu.ucla.cs.cs144.SearchRegion;
 import edu.ucla.cs.cs144.SearchResult;
 
 public class AuctionSearch implements IAuctionSearch {
+	private IndexSearcher searcher = null;
+	private QueryParser parser = null;
 
-	/* 
-         * You will probably have to use JDBC to access MySQL data
-         * Lucene IndexSearcher class to lookup Lucene index.
-         * Read the corresponding tutorial to learn about how to use these.
-         *
-	 * You may create helper functions or classes to simplify writing these
-	 * methods. Make sure that your helper functions are not public,
-         * so that they are not exposed to outside of this class.
-         *
-         * Any new classes that you create should be part of
-         * edu.ucla.cs.cs144 package and their source files should be
-         * placed at src/edu/ucla/cs/cs144.
-         *
-         */
+	public AuctionSearch() {
+		try {
+			searcher = new IndexSearcher(DirectoryReader.open(FSDirectory.open(new File("/var/lib/lucene/index/"))));
+			parser = new QueryParser("Content", new StandardAnalyzer());
+		} catch (IOException e) {
+			System.out.println(e);
+		}
+	}
+
+	public Document getDocument(int docId) throws IOException {
+		return searcher.doc(docId);
+	}
 	
 	public SearchResult[] basicSearch(String query, int numResultsToSkip, 
 			int numResultsToReturn) {
-		// TODO: Your code here!
+		try {
+			Query queryObj = parser.parse(query);
+
+			TopDocs results = searcher.search(queryObj, numResultsToSkip + numResultsToReturn);
+
+			ScoreDoc[] hits = results.scoreDocs;
+			int numHits = hits.length;
+
+			// We need to check how many results we need to return
+			if (numHits < numResultsToSkip)
+				numResultsToReturn = 0;
+			else
+				numResultsToReturn = Math.min(numHits, numResultsToReturn);
+
+			SearchResult[] searchResults = new SearchResult[numResultsToReturn];
+
+			for (int i = numResultsToSkip, j = 0; i < numResultsToSkip + numResultsToReturn; i++, j++) {
+				Document doc = this.getDocument(hits[i].doc);
+				searchResults[j] = new SearchResult(doc.get("ItemID"), doc.get("name"));
+			}
+		
+		return searchResults;
+
+		} catch (IOException e) {
+			System.out.println(e);
+		} catch (ParseException e) {
+			System.out.println(e);
+		}
+
 		return new SearchResult[0];
 	}
 
