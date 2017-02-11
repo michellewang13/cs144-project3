@@ -86,7 +86,26 @@ public class AuctionSearch implements IAuctionSearch {
 
 	public SearchResult[] spatialSearch(String query, SearchRegion region,
 			int numResultsToSkip, int numResultsToReturn) {
-		// TODO: Your code here!
+		
+		try {
+			// TODO: Establish DB connection
+
+			// TODO: Do basic search
+
+			// TODO: Compare each result from basic search, if within the region, add to result list
+			// 1. Create a polygon with the region's dimensions
+			// 2. Create JDBC prepared statements and use MBRContains
+			// 3. Execute query for each item in basic search
+			// 4. If item is within the region:
+			//  	- If numResultsToSkip > 0 => numResultsToSkip--
+			//		- Else if numResultsToReturn > 0 => numResultsToReturn++ and add to the result list
+
+			// TODO: Do basic search again until have numResultsToReturn OR no more hits	
+		
+		} catch (IOException e) {
+			System.out.println(e);
+		}
+
 		return new SearchResult[0];
 	}
 
