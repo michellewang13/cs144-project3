@@ -8,6 +8,7 @@ CREATE TABLE Location (
 INSERT INTO Location 
 	SELECT ItemID, Point(Latitude, Longitude) 
 	FROM Item 
-	WHERE Latitude<>'null' AND Longitude<>'null';
+	WHERE Latitude<>'null' AND Longitude<>'null'
+		AND Latitude<>'' AND Longitude<>'';
 
 CREATE SPATIAL INDEX SpatialIndex ON Location(Position);

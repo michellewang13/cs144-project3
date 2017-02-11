@@ -13,6 +13,7 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.sql.PreparedStatement;
 
 import org.apache.lucene.document.Document;
 import org.apache.lucene.analysis.Analyzer;
@@ -48,6 +49,10 @@ public class AuctionSearch implements IAuctionSearch {
 
 	public Document getDocument(int docId) throws IOException {
 		return searcher.doc(docId);
+	}
+
+	public String getRegionBounds(double lx, double ly, double rx, double ry) {
+		return "GeomFromText('Polygon((" + lx + " " + ly + ", " + lx + " " + ry + ", " + rx + " " + ry + ", " + rx + " " + ly + ", " + lx + " " + ly +  "))')";
 	}
 	
 	public SearchResult[] basicSearch(String query, int numResultsToSkip, 
@@ -88,21 +93,68 @@ public class AuctionSearch implements IAuctionSearch {
 			int numResultsToSkip, int numResultsToReturn) {
 		
 		try {
-			// TODO: Establish DB connection
+			// Results list (will be transferred to array later)
+			ArrayList<SearchResult> searchResults = new ArrayList<SearchResult>();
 
-			// TODO: Do basic search
+			// Establish DB connection
+			Connection con = DbManager.getConnection(true);
 
-			// TODO: Compare each result from basic search, if within the region, add to result list
-			// 1. Create a polygon with the region's dimensions
-			// 2. Create JDBC prepared statements and use MBRContains
-			// 3. Execute query for each item in basic search
-			// 4. If item is within the region:
-			//  	- If numResultsToSkip > 0 => numResultsToSkip--
-			//		- Else if numResultsToReturn > 0 => numResultsToReturn++ and add to the result list
+			// Do basic search
+			int originalNumResultsToReturn = numResultsToReturn;
+			SearchResult[] results = basicSearch(query, 0, numResultsToReturn);
 
-			// TODO: Do basic search again until have numResultsToReturn OR no more hits	
-		
-		} catch (IOException e) {
+			// Get region bounds as a MySQL geometry
+			String regionBounds = this.getRegionBounds(region.getLx(), region.getLy(), region.getRx(), region.getRy());
+
+			// Create JDBC prepared statements and use MBRContains
+			PreparedStatement checkPosition = con.prepareStatement(
+				"SELECT MBRContains(" + regionBounds + ",Position) AS inRegion FROM Location WHERE ItemID=?"
+			);
+
+			// Keep basic searching and spatial searching until numResultsToReturn results have been added
+			while (numResultsToReturn > 0) {
+				// Check each item found by basic search if in region
+				for (int i = 0; i < results.length; i++) {
+					SearchResult item = results[i];
+
+					// Execute query
+					checkPosition.setString(1, item.getItemId());
+					ResultSet checkPositionRS = checkPosition.executeQuery();
+
+					// Add to search results if in region
+					if (checkPositionRS.next() && checkPositionRS.getBoolean("inRegion")) {
+						if (numResultsToSkip > 0) {
+							numResultsToSkip--;
+						
+						} else if (numResultsToReturn > 0) {
+							System.out.println(numResultsToReturn);
+							searchResults.add(item);
+							numResultsToReturn--;
+						} else {
+							checkPositionRS.close();
+							break;
+						}
+					}
+
+					checkPositionRS.close();
+				}
+
+				results = basicSearch(query, results.length, originalNumResultsToReturn);
+			}
+
+			checkPosition.close();
+			con.close();
+
+			// Transfer searchResults to an array
+			int numResults = searchResults.size();
+
+			SearchResult[] finalSearchResults = new SearchResult[numResults];
+			for (int i = 0; i < numResults; i++)
+				finalSearchResults[i] = searchResults.get(i);
+
+			return finalSearchResults;
+			
+		} catch (SQLException e) {
 			System.out.println(e);
 		}
 
