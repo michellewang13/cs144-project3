@@ -70,7 +70,7 @@ public class AuctionSearch implements IAuctionSearch {
 
 			for (int i = numResultsToSkip, j = 0; i < numResultsToSkip + numResultsToReturn; i++, j++) {
 				Document doc = this.getDocument(hits[i].doc);
-				searchResults[j] = new SearchResult(doc.get("ItemID"), doc.get("name"));
+				searchResults[j] = new SearchResult(doc.get("ItemID"), doc.get("Name"));
 			}
 		
 		return searchResults;
